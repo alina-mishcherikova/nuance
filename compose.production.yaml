@@ -1,0 +1,11 @@
+# Infrastructure starting point only; NOT production-ready. Add TLS, external
+# secrets, backups, SMTP provider and reviewed private networking before use.
+services:
+  postgres:
+    ports: !reset []
+  minio:
+    ports: !reset []
+  mailpit:
+    ports: !reset []
+  app:
+    ports: !reset []
