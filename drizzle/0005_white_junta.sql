@@ -1,0 +1,1 @@
+ALTER TABLE "solo_guests" ADD COLUMN "adult_confirmed" boolean DEFAULT false NOT NULL;

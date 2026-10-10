@@ -18,7 +18,11 @@ export function proxy(request: NextRequest) {
     [overrides, 'x-nonce', 'content-security-policy'].filter(Boolean).join(','),
   );
   response.headers.set('Content-Security-Policy', csp);
-  if (/\/(account|moderation|auth)(\/|$)/.test(request.nextUrl.pathname)) {
+  if (
+    /\/(account|moderation|auth|solo|builder|age|quizzes|catalog)(\/|$)/.test(
+      request.nextUrl.pathname,
+    )
+  ) {
     response.headers.set('Cache-Control', 'no-store');
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }

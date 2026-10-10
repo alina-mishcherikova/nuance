@@ -56,9 +56,11 @@ export default async function Home() {
         </ol>
       </section>
       <section className="catalog-empty">
-        <p className="eyebrow">{t('coming')}</p>
-        <h2>{t('catalogTitle')}</h2>
-        <p>{t('catalogBody')}</p>
+        <h2>{t('quiz.catalog')}</h2>
+        <p>{t('quiz.catalogIntro')}</p>
+        <Button asChild>
+          <Link href="/catalog">{t('quiz.catalog')}</Link>
+        </Button>
       </section>
     </>
   );

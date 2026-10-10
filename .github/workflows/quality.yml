@@ -14,8 +14,8 @@ jobs:
       - run: npm install --global pnpm@12.9.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm dev:env
-      - run: docker compose up -d --wait postgres mailpit
-      - run: pnpm db:migrate && pnpm db:seed
+      - run: docker compose up -d --wait postgres mailpit minio
+      - run: pnpm db:migrate && pnpm db:seed && pnpm storage:init
       - run: pnpm format:check
       - run: pnpm audit --prod
       - run: pnpm lint

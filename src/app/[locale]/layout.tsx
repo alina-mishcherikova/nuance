@@ -46,6 +46,7 @@ export default async function Layout({
               </Link>
               <nav aria-label={t('navHome')}>
                 <Link href="/#how">{t('navHome')}</Link>
+                <Link href="/catalog">{t('quiz.catalog')}</Link>
                 <Link href="/account">{t('navAccount')}</Link>
               </nav>
               <Preferences />

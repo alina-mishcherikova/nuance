@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { randomBytes } from 'node:crypto';
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -23,10 +25,24 @@ try {
   const tables = await temporary.query(
     "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'",
   );
-  if (tables.rows[0]?.count !== 29)
+  if (tables.rows[0]?.count !== 30)
     throw new Error('Unexpected schema table count');
+  for (let run = 0; run < 2; run++)
+    await promisify(execFile)('pnpm', ['db:seed'], {
+      env: { ...process.env, DATABASE_URL: url.toString() },
+      maxBuffer: 1024 * 1024,
+    });
+  const seeded = await temporary.query(
+    "SELECT (SELECT count(*) FROM quiz_versions WHERE status='PUBLISHED' AND approved AND official)::int AS versions,(SELECT count(*) FROM questions)::int AS questions,(SELECT count(*) FROM question_copy)::int AS translations",
+  );
+  if (
+    seeded.rows[0]?.versions !== 8 ||
+    seeded.rows[0]?.questions !== 32 ||
+    seeded.rows[0]?.translations !== 96
+  )
+    throw new Error('Fresh seed rehearsal failed');
   console.info(
-    'Fresh migration rehearsal passed: 29 tables, guard migrations, idempotent reapply.',
+    'Fresh migration and seed rehearsal passed: 30 tables, 8 immutable quizzes, 32 questions, 96 question translations; idempotent migrations and seeds.',
   );
 } finally {
   await temporary?.end();

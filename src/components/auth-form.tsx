@@ -1,4 +1,5 @@
 'use client';
+import { useHydrated } from '@/lib/use-hydrated';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocale, useTranslations } from 'next-intl';
@@ -7,6 +8,7 @@ import { Button } from './ui/button';
 export type AuthMode = 'login' | 'signup' | 'verify' | 'reset' | 'new-password';
 type Fields = { name: string; email: string; password: string; otp: string };
 export function AuthForm({ mode }: { mode: AuthMode }) {
+  const hydrated = useHydrated();
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
@@ -81,11 +83,17 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
     ...(['verify', 'new-password'].includes(mode) ? ['otp' as const] : []),
   ];
   return (
-    <form onSubmit={handleSubmit(submit)} noValidate className="auth-form">
+    <form
+      method="post"
+      onSubmit={handleSubmit(submit)}
+      noValidate
+      className="auth-form"
+    >
       {fields.map((field) => (
         <div className="form-field" key={field}>
           <label htmlFor={field}>{t(field === 'otp' ? 'code' : field)}</label>
           <input
+            disabled={!hydrated}
             id={field}
             type={
               field === 'password'
@@ -149,7 +157,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         </p>
       )}
       {notice && <p role="status">{t(notice)}</p>}
-      <Button disabled={isSubmitting} type="submit">
+      <Button disabled={!hydrated || isSubmitting} type="submit">
         {t(
           isSubmitting
             ? 'pending'
@@ -180,6 +188,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         {mode === 'verify' && (
           <Button
             type="button"
+            disabled={!hydrated}
             variant="quiet"
             onClick={async () => {
               const email = getValues('email');

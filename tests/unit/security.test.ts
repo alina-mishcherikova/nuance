@@ -98,8 +98,15 @@ describe('deny by default', () => {
 it('has complete locale key parity and nonempty copy', () => {
   for (const messages of [uk, fr]) {
     expect(Object.keys(messages).sort()).toEqual(Object.keys(en).sort());
+    expect(Object.keys(messages.quiz).sort()).toEqual(
+      Object.keys(en.quiz).sort(),
+    );
     expect(
-      Object.values(messages).every((value) => value.trim().length > 0),
+      Object.values(messages).every((value) =>
+        typeof value === 'string'
+          ? value.trim().length > 0
+          : Object.values(value).every((text) => text.trim().length > 0),
+      ),
     ).toBe(true);
   }
 });

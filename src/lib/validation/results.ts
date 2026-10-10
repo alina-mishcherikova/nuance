@@ -25,4 +25,27 @@ export const aggregateResultSchema = z
       .max(20),
   })
   .strict();
-export type AggregateResult = z.infer<typeof aggregateResultSchema>;
+export const soloResultSchema = z
+  .object({
+    schemaVersion: z.literal(2),
+    kind: z.literal('solo'),
+    categories: z
+      .array(
+        z
+          .object({
+            category: z.string().max(60),
+            answered: z.number().int().min(0).max(100),
+            scaleMean: z.number().min(1).max(5).nullable(),
+          })
+          .strict(),
+      )
+      .max(100),
+    distribution: z.record(z.uuid(), z.number().int().min(0).max(100)),
+    observation: z.enum(['high', 'low', 'balanced', 'choices']),
+  })
+  .strict();
+export const resultPayloadSchema = z.union([
+  aggregateResultSchema,
+  soloResultSchema,
+]);
+export type AggregateResult = z.infer<typeof resultPayloadSchema>;

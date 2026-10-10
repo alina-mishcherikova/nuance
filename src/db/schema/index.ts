@@ -47,6 +47,9 @@ export const questionKind = pgEnum('question_kind', [
   'MULTIPLE',
   'SCALE',
   'TEXT',
+  'YES_NO_MAYBE',
+  'SINGLE_CHOICE',
+  'MULTIPLE_CHOICE',
 ]);
 export const attemptState = pgEnum('attempt_state', [
   'IN_PROGRESS',
@@ -190,6 +193,12 @@ export const quizVersions = pgTable(
       .notNull()
       .references(() => categories.id),
     adultOnly: boolean('adult_only').default(false).notNull(),
+    revision: integer('revision').default(0).notNull(),
+    approved: boolean('approved').default(false).notNull(),
+    official: boolean('official').default(false).notNull(),
+    featured: boolean('featured').default(false).notNull(),
+    archived: boolean('archived').default(false).notNull(),
+    coverId: uuid('cover_id').references(() => mediaAssets.id),
     scoringConfig: jsonb('scoring_config').$type<ScoringConfig>().notNull(),
     publishedAt: time('published_at'),
     ...dates(),
@@ -240,12 +249,26 @@ export const questions = pgTable(
       .references(() => quizVersions.id, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
     kind: questionKind('kind').notNull(),
+    stableId: uuid('stable_id').defaultRandom().notNull(),
+    category: varchar('category', { length: 60 })
+      .default('connection')
+      .notNull(),
+    weight: integer('weight').default(1).notNull(),
+    minSelections: integer('min_selections').default(1).notNull(),
+    maxSelections: integer('max_selections').default(1).notNull(),
+    imageId: uuid('image_id').references(() => mediaAssets.id),
     required: boolean('required').default(true).notNull(),
     scaleMin: integer('scale_min'),
     scaleMax: integer('scale_max'),
     ...dates(),
   },
   (t) => [
+    unique('question_stable_version_unique').on(t.versionId, t.stableId),
+    check('question_weight', sql`${t.weight} BETWEEN 0 AND 10`),
+    check(
+      'question_selections',
+      sql`${t.minSelections}>=1 AND ${t.maxSelections}>=${t.minSelections} AND ${t.maxSelections}<=12`,
+    ),
     unique('question_order_unique').on(t.versionId, t.position),
     unique('question_version_unique').on(t.id, t.versionId),
     check('question_position', sql`${t.position}>=0`),
@@ -372,6 +395,7 @@ export const attempts = pgTable(
     userId: uuid('user_id').references(() => user.id, { onDelete: 'cascade' }),
     roomId: uuid('room_id'),
     participantId: uuid('participant_id').unique(),
+    guestSessionId: uuid('guest_session_id').references(() => soloGuests.id),
     status: attemptState('status').default('IN_PROGRESS').notNull(),
     revision: integer('revision').default(0).notNull(),
     submittedAt: time('submitted_at'),
@@ -390,7 +414,7 @@ export const attempts = pgTable(
     }).onDelete('cascade'),
     check(
       'attempt_owner',
-      sql`(${t.roomId} IS NULL AND ${t.participantId} IS NULL AND ${t.userId} IS NOT NULL) OR (${t.roomId} IS NOT NULL AND ${t.participantId} IS NOT NULL AND ${t.userId} IS NULL)`,
+      sql`(${t.roomId} IS NULL AND ${t.participantId} IS NULL AND num_nonnulls(${t.userId},${t.guestSessionId})=1) OR (${t.roomId} IS NOT NULL AND ${t.participantId} IS NOT NULL AND ${t.userId} IS NULL AND ${t.guestSessionId} IS NULL)`,
     ),
     check(
       'submitted_date',
@@ -399,7 +423,7 @@ export const attempts = pgTable(
     check('attempt_revision', sql`${t.revision}>=0`),
     check(
       'guest_attempt_retention',
-      sql`${t.participantId} IS NULL OR (${t.expiresAt} IS NOT NULL AND ${t.expiresAt}<=${t.createdAt}+interval '7 days')`,
+      sql`(${t.participantId} IS NULL AND ${t.guestSessionId} IS NULL) OR (${t.expiresAt} IS NOT NULL AND ${t.expiresAt}<=${t.createdAt}+interval '7 days')`,
     ),
     index('user_history_idx').on(t.userId, t.createdAt),
     index('attempt_cleanup_idx').on(t.expiresAt),
@@ -575,5 +599,24 @@ export const productEvents = pgTable(
       sql`${t.event} IN ('catalog_view','quiz_completed')`,
     ),
     check('event_count', sql`${t.count}>=0`),
+  ],
+);
+
+export const soloGuests = pgTable(
+  'solo_guests',
+  {
+    id: id(),
+    verifier: varchar('verifier', { length: 64 }).notNull().unique(),
+    adultConfirmed: boolean('adult_confirmed').default(false).notNull(),
+    expiresAt: time('expires_at').notNull(),
+    revokedAt: time('revoked_at'),
+    ...dates(),
+  },
+  (t) => [
+    index('solo_guest_expiry_idx').on(t.expiresAt),
+    check(
+      'solo_guest_retention',
+      sql`${t.expiresAt}<=${t.createdAt}+interval '7 days' AND ${t.expiresAt}>${t.createdAt}`,
+    ),
   ],
 );

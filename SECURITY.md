@@ -22,7 +22,7 @@ Use SMTP authentication/TLS for a real provider, a persistent delivery queue, re
 
 ## Data deletion design
 
-Guest credentials/room/attempt records expire within 7 days; services must deny expired access immediately. Stage 4 purge transaction deletes room results then answers/attempts/participants/room (CASCADE for temporary child graphs); published versions are RESTRICTed. Registered history policy is deliberately pending, so no history feature is released. Account deletion must anonymize retained moderation/audit references, resolve owned quiz preservation and delete identifiable answers/media; deleting a user alone is not a privacy workflow. Backup erasure latency must be disclosed. Dedicated scheduled cleanup is not implemented.
+Guest credentials/room/attempt records expire within 7 days; services must deny expired access immediately. Stage 4 purge transaction deletes room results then answers/attempts/participants/room (CASCADE for temporary child graphs); published versions are RESTRICTed. Stage 2 discloses seven-day expiry for registered solo history; long-term registered retention is deliberately not enabled. Account deletion must anonymize retained moderation/audit references, resolve owned quiz preservation and delete identifiable answers/media; deleting a user alone is not a privacy workflow. Backup erasure latency must be disclosed. Dedicated scheduled cleanup is not implemented.
 
 ## Deployment baseline
 
@@ -31,3 +31,15 @@ CSP per-request nonce, frame-ancestors none, nosniff, restrictive permissions/re
 ## References checked 2026-10-10
 
 [Better Auth email/password](https://better-auth.com/docs/authentication/email-password), [email OTP](https://better-auth.com/docs/plugins/email-otp), [Drizzle adapter](https://better-auth.com/docs/adapters/drizzle), [OWASP ASVS](https://owasp.org/projects/asvs), [OWASP password storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [WCAG 2.2](https://www.w3.org/TR/WCAG22/). Implementation evidence and remaining gaps are in IMPLEMENTATION_PLAN.md.
+
+## Stage 2 implemented boundaries and residual risks
+
+Solo BOLA: every read/save/submit scopes by user ID or unexpired/unrevoked independent solo-guest verifier, rejects room attempts, uses private DTOs/no-store/noindex and seven-day expiry. Guest-cookie theft remains bearer-session theft; ID guessing alone provides no access. Session recovery cannot impersonate a guest. Attempt row locks keep reads consistent with saves and serialize revisions/submission; database triggers freeze submitted answer graphs and snapshot uniqueness makes submit idempotent. No group answers are served by these endpoints.
+
+UGC: owner-only DRAFT writes, bounded strict Zod documents, existing-category/tag checks, owner/READY image references, plain React-escaped text. Review submission requires complete EN/UK/FR translations and freezes author editing. Authors cannot set approval/official/status, and no publishing endpoint exists. New draft versions preserve immutable question stable IDs while allocating new row IDs. Database-approved publication checks translations, supported kinds, options, categories and review evidence. Public reads also filter approval/review/archive/completeness and adult eligibility before returning descriptions.
+
+Adult metadata: self-declaration stored in a seven-day verifier-backed session, not a trusted boolean browser cookie; applied to public catalog/details/APIs, attempts/results, adult authoring and linked media. Public metadata is generic, private areas noindex, no adult cover/link-preview leak. This is not sufficient production age assurance; legal/jurisdiction review and real production controls remain mandatory.
+
+Uploads: authenticated before body read, exact Origin/rate limits, raw body capped at 5 MiB, JPEG/PNG/WebP MIME+signature, Sharp decode limit 16M pixels, 10-second processing timeout, resize to 1600px, WebP reencode with no preserved metadata. No remote fetch, SVG/HTML or user-supplied storage paths. Random object keys, private S3 bucket, owner/published eligibility on browser reads, no shared optimizer cache. Sharp and AWS SDK versions are pinned; production scanning/quotas, least-privilege storage keys, supported provider, orphan cleanup and storage-account deletion still need hardening.
+
+All solo identifiable history is inaccessible after seven days, including registered accounts. Physical purge/backup lifecycle, account/guest data access/export/deletion and draft/media retention remain stage 4; this development service must not be publicly launched. No new analytics or sharing is introduced. Auth forms now use POST and disable input until hydration, preventing pre-hydration native GET credential submission. Error responses never include inputs, tokens, SQL or stack traces. Only local test credentials/data were used.
